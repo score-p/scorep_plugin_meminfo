@@ -69,7 +69,7 @@ public:
         for (auto match : memInfo::parse({pattern})) {
             if (subscribed_.find(match.second.name) == subscribed_.end()) {
                 result.push_back(scorep::plugin::metric_property{
-                    match.second.name, "", match.second.usingByte() ? "B" : ""}
+                    match.second.name, "", match.second.using_byte() ? "B" : ""}
                                      .absolute_point()
                                      .value_int());
                 subscribed_.emplace(match.second.name, match.second.id());
@@ -92,7 +92,7 @@ public:
         }
 
         running = true;
-        lastMeasurement_ = std::chrono::system_clock::now();
+        last_measurement_ = std::chrono::system_clock::now();
         thread_ = std::thread([&]() { this->exec(); });
     }
 
@@ -113,10 +113,10 @@ public:
             auto now = scorep::chrono::measurement_clock::now();
             data_.emplace_back(now, memInfo::parse(names_));
 
-            while (lastMeasurement_ < std::chrono::system_clock::now())
-                lastMeasurement_ += intervall_;
+            while (last_measurement_ < std::chrono::system_clock::now())
+                last_measurement_ += intervall_;
 
-            std::this_thread::sleep_until(lastMeasurement_);
+            std::this_thread::sleep_until(last_measurement_);
         }
     }
 
@@ -135,6 +135,6 @@ private:
     std::vector<std::string> names_;
     std::vector<dataset> data_;
     std::chrono::nanoseconds intervall_;
-    std::chrono::system_clock::time_point lastMeasurement_ =
+    std::chrono::system_clock::time_point last_measurement_ =
         std::chrono::system_clock::now();
 };

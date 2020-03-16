@@ -21,8 +21,8 @@ public:
     result_t()
     {
     }
-    result_t(std::string name, std::int64_t size, std::int64_t id, bool useByte = true)
-        : name(name), size(size), id_(id), useByte_(useByte)
+    result_t(std::string name, std::int64_t size, std::int64_t id, bool use_byte = true)
+        : name(name), size(size), id_(id), use_byte_(use_byte)
     {
     }
 
@@ -34,21 +34,21 @@ public:
         return id_;
     }
 
-    bool usingByte() const
+    bool using_byte() const
     {
-        return useByte_;
+        return use_byte_;
     }
 
     friend std::ostream& operator<<(std::ostream& os, const result_t& r);
 
 private:
     std::int64_t id_;
-    bool useByte_ = true;
+    bool use_byte_ = true;
 };
 
 std::ostream& operator<<(std::ostream& os, const result_t& r)
 {
-    if (r.useByte_) {
+    if (r.use_byte_) {
         os << r.name << ": " << printSize(r.size);
     }
     else {
@@ -70,12 +70,11 @@ std::map<std::int64_t, result_t> parse(const std::vector<std::string>& search)
     std::ifstream meminfo("/proc/meminfo");
     std::map<std::int64_t, result_t> results;
 
-    std::string str_custom = "(";
-    std::string str = "(";
+    std::string regex_custom_str;
+    std::string regex_str = "(";
 
     if (search.empty()) {
-        str += "[a-zA-Z0-9_]+";
-        str_custom += "[a-zA-Z0-9_]+";
+        regex_str += "[a-zA-Z0-9_]+";
     }
     else {
         bool first = true;
@@ -83,35 +82,36 @@ std::map<std::int64_t, result_t> parse(const std::vector<std::string>& search)
             if (first)
                 first = false;
             else {
-                str += '|';
-                str_custom += '|';
+                regex_str += '|';
             }
 
-            str += s;
-            str_custom += s;
+            regex_str += s;
         }
     }
-    str += "):[^a-zA-Z0-9]*([0-9]+).?([kKmMgGtT][bB])?[^a-zA-Z0-9]*";
-    str_custom += ")";
+    regex_str += ")";
+    regex_custom_str = regex_str;
+    regex_str += ":[^a-zA-Z0-9]*([0-9]+).?([kKmMgGtT][bB])?[^a-zA-Z0-9]*";
 
-    std::regex regEx(str);
+    std::regex regex(regex_str);
 
-    int MemTotal;
-    int MemFree;
-    int Buffers;
-    int Cache;
-    int SwapTotal;
-    int SwapCached;
-    int SwapFree;
+    int mem_total;
+    int mem_free;
+    int buffers;
+    int cache;
+    int swap_total;
+    int swap_free;
+    int swap_cached;
 
-    std::int64_t lineNr = 0;
+    std::int64_t line_nr = 0;
     while (std::getline(meminfo, line)) {
         std::smatch match;
 
         bool run = false;
+        bool save = false;
 
-        if (std::regex_match(line, match, regEx)) {
+        if (std::regex_match(line, match, regex)) {
             run = true;
+            save = true;
         }
         else if (std::regex_match(line, match, std::regex("(MemTotal|MemFree|SwapTotal|SwapFree|SwapCached|Cache|Buffers):[^a-zA-Z0-9]*([0-9]+).?([kKmMgGtT][bB])?[^a-zA-Z0-9]*"))) {
             run = true;
@@ -123,25 +123,25 @@ std::map<std::int64_t, result_t> parse(const std::vector<std::string>& search)
             std::string unit = match[3].str();
 
             if (name == "MemTotal") {
-                MemTotal = size;
+                mem_total = size;
             }
             if (name == "MemFree") {
-                MemFree = size;
+                mem_free = size;
             }
             if (name == "Buffers") {
-                Buffers = size;
+                buffers = size;
             }
             if (name == "Cache") {
-                Cache = size;
+                cache = size;
             }
             if (name == "SwapTotal") {
-                SwapTotal = size;
+                swap_total = size;
             }
             if (name == "SwapFree") {
-                SwapFree = size;
+                swap_free = size;
             }
             if (name == "SwapCached") {
-                SwapCached = size;
+                swap_cached = size;
             }
 
             if (unit.size() == 2 && std::tolower(unit[1]) == 'b') {
@@ -158,45 +158,42 @@ std::map<std::int64_t, result_t> parse(const std::vector<std::string>& search)
                     break;
                 }
 
-                if (std::regex_match(line, match, regEx)) {
-                    results.emplace(lineNr, result_t{std::move(name), size, lineNr});
+                if (save) {
+                    results.emplace(line_nr, result_t{std::move(name), size, line_nr});
                 }
             }
-            else if (unit.size() == 1 && std::tolower(unit[0]) == 'b') {
-                if (std::regex_match(line, match, regEx)) {
-                    results.emplace(lineNr, result_t{std::move(name), size, lineNr});
-                }
+            else if (unit.size() == 1 && std::tolower(unit[0]) == 'b' && save) {
+                results.emplace(line_nr, result_t{std::move(name), size, line_nr});
             }
-            else {
-                if (std::regex_match(line, match, regEx)) {
-                    results.emplace(lineNr, result_t{std::move(name), size, lineNr, false});
-                }
+            else if (save) {
+                results.emplace(line_nr, result_t{std::move(name), size, line_nr, false});
             }
         }
-        ++lineNr;
+        ++line_nr;
     }
 
     // CUSTOM
 
-    std::regex regEx_custom(str_custom);
+    std::regex regex_custom(regex_custom_str);
     std::smatch match_custom;
     std::string s;
 
     {
         s = "MemUsed";
-        if (std::regex_match(s, match_custom, regEx_custom)) {
+        if (std::regex_match(s, match_custom, regex_custom)) {
             results.emplace(
-                lineNr, result_t{s, MemTotal - MemFree - Buffers - Cache, lineNr});
+                line_nr, result_t{s, mem_total - mem_free - buffers - cache, line_nr});
         }
-        ++lineNr;
+        ++line_nr;
     }
 
     {
         s = "SwapUsed";
-        if (std::regex_match(s, match_custom, regEx_custom)) {
-            results.emplace(lineNr, result_t{s, SwapTotal - SwapFree - SwapCached, lineNr});
+        if (std::regex_match(s, match_custom, regex_custom)) {
+            results.emplace(
+                line_nr, result_t{s, swap_total - swap_free - swap_cached, line_nr});
         }
-        ++lineNr;
+        ++line_nr;
     }
 
     return results;
