@@ -68,22 +68,29 @@ std::map<std::int64_t, result_t> parse(const std::vector<std::string>& search)
     std::ifstream meminfo("/proc/meminfo");
     std::map<std::int64_t, result_t> results;
 
+    std::string str_custom = "(";
     std::string str = "(";
+
     if (search.empty()) {
         str += "[a-zA-Z0-9_]+";
+        str_custom += "[a-zA-Z0-9_]+";
     }
     else {
         bool first = true;
         for (const auto& s : search) {
             if (first)
                 first = false;
-            else
+            else {
                 str += '|';
+                str_custom += '|';
+            }
 
             str += s;
+            str_custom += s;
         }
     }
     str += "):[^a-zA-Z0-9]*([0-9]+).?([kKmMgGtT][bB])?[^a-zA-Z0-9]*";
+    str_custom += ")";
 
     std::regex regEx(str);
 
@@ -109,10 +116,25 @@ std::map<std::int64_t, result_t> parse(const std::vector<std::string>& search)
         if (run) {
             std::string name = match[1].str();
             std::int64_t size = std::stoll(match[2].str());
-            std::string sizeType = match[3].str();
+            std::string unit = match[3].str();
 
-            if (!sizeType.empty() && std::tolower(sizeType[1]) == 'b') {
-                switch (std::tolower(sizeType[0])) {
+            if (name == "MemTotal")
+                MemTotal = size;
+            if (name == "MemFree")
+                MemFree = size;
+            if (name == "Buffers")
+                Buffers = size;
+            if (name == "Cache")
+                Cache = size;
+            if (name == "SwapTotal")
+                SwapTotal = size;
+            if (name == "SwapFree")
+                SwapFree = size;
+            if (name == "SwapCached")
+                SwapCached = size;
+
+            if (unit.size() == 2 && std::tolower(unit[1]) == 'b') {
+                switch (std::tolower(unit[0])) {
                 case 't':
                     size *= 1024;
                 case 'g':
@@ -125,21 +147,10 @@ std::map<std::int64_t, result_t> parse(const std::vector<std::string>& search)
                     break;
                 }
 
-                if (name == "MemTotal")
-                    MemTotal = size;
-                if (name == "MemFree")
-                    MemFree = size;
-                if (name == "Buffers")
-                    Buffers = size;
-                if (name == "Cache")
-                    Cache = size;
-                if (name == "SwapTotal")
-                    SwapTotal = size;
-                if (name == "SwapFree")
-                    SwapFree = size;
-                if (name == "SwapCached")
-                    SwapCached = size;
-
+                if (std::regex_match(line, match, regEx))
+                    results.emplace(lineNr, result_t{std::move(name), size, lineNr});
+            }
+            else if (unit.size() == 1 && std::tolower(unit[0]) == 'b') {
                 if (std::regex_match(line, match, regEx))
                     results.emplace(lineNr, result_t{std::move(name), size, lineNr});
             }
@@ -152,23 +163,6 @@ std::map<std::int64_t, result_t> parse(const std::vector<std::string>& search)
     }
 
     // CUSTOM
-
-    std::string str_custom = "(";
-    if (search.empty()) {
-        str_custom += "[a-zA-Z0-9_]+";
-    }
-    else {
-        bool first = true;
-        for (const auto& s : search) {
-            if (first)
-                first = false;
-            else
-                str_custom += '|';
-
-            str_custom += s;
-        }
-    }
-    str_custom += ")";
 
     std::regex regEx_custom(str_custom);
     std::smatch match_custom;
@@ -192,26 +186,6 @@ std::map<std::int64_t, result_t> parse(const std::vector<std::string>& search)
     }
 
     return results;
-}
-
-std::string printSize(std::int64_t size)
-{
-    const std::array<const char* const, 5> sizeTypes = {" B", " kB", " MB",
-                                                        " GB"};
-
-    std::stringstream out;
-    double res = static_cast<double>(size);
-
-    for (const auto& s : sizeTypes) {
-        if (res < 800) {
-            out << std::fixed << std::setprecision(2) << res << s;
-            return out.str();
-        }
-        res /= 1024;
-    }
-
-    out << std::fixed << std::setprecision(2) << res << " TB";
-    return out.str();
 }
 
 } // namespace memInfo

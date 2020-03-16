@@ -29,13 +29,13 @@ class meminfo_plugin : public scorep::plugin::base<meminfo_plugin,
 public:
     meminfo_plugin()
     {
-        auto intervall_str =
-            scorep::environment_variable::get("INTERVALL", "10ms");
+        auto interval_str =
+            scorep::environment_variable::get("INTERVAL", "10ms");
 
         std::regex r("([0-9]+)([mun]?s)");
         std::smatch s;
 
-        if (std::regex_match(intervall_str, s, r)) {
+        if (std::regex_match(interval_str, s, r)) {
             std::string time = s[1];
             std::string unit = s[2];
 
@@ -82,13 +82,7 @@ public:
 
     std::int64_t add_metric(const std::string& match_name)
     {
-        auto match = subscribed_.find(match_name);
-        if (match != subscribed_.end())
-            return match->second;
-        else
-            throw std::runtime_error("Id not available for `match_name` = '" +
-                                     match_name + "'");
-        return -1;
+        return subscribed_.find(match_name)->second;
     }
 
     void start()

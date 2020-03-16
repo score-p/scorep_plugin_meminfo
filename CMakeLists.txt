@@ -1,12 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(scorep_plugin_meminfo)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(NITRO_POSITION_INDEPENDENT_CODE ON CACHE INTERNAL "")
-
-#if(NOT ${CMAKE_HOST_SYSTEM_NAME} EQUAL "Linux")
-#    message( FATAL_ERROR "This works only for Linux (Found: ${CMAKE_HOST_SYSTEM_NAME})" )
-#endif()
 
 find_package(Threads REQUIRED)
 
