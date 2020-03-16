@@ -48,10 +48,12 @@ private:
 
 std::ostream& operator<<(std::ostream& os, const result_t& r)
 {
-    if (r.useByte_)
+    if (r.useByte_) {
         os << r.name << ": " << printSize(r.size);
-    else
+    }
+    else {
         os << r.name << ": " << r.size;
+    }
 
     return os;
 }
@@ -108,30 +110,39 @@ std::map<std::int64_t, result_t> parse(const std::vector<std::string>& search)
 
         bool run = false;
 
-        if (std::regex_match(line, match, regEx))
+        if (std::regex_match(line, match, regEx)) {
             run = true;
-        else if (std::regex_match(line, match, std::regex("(MemTotal|MemFree|SwapTotal|SwapFree|SwapCached|Cache|Buffers):[^a-zA-Z0-9]*([0-9]+).?([kKmMgGtT][bB])?[^a-zA-Z0-9]*")))
+        }
+        else if (std::regex_match(line, match, std::regex("(MemTotal|MemFree|SwapTotal|SwapFree|SwapCached|Cache|Buffers):[^a-zA-Z0-9]*([0-9]+).?([kKmMgGtT][bB])?[^a-zA-Z0-9]*"))) {
             run = true;
+        }
 
         if (run) {
             std::string name = match[1].str();
             std::int64_t size = std::stoll(match[2].str());
             std::string unit = match[3].str();
 
-            if (name == "MemTotal")
+            if (name == "MemTotal") {
                 MemTotal = size;
-            if (name == "MemFree")
+            }
+            if (name == "MemFree") {
                 MemFree = size;
-            if (name == "Buffers")
+            }
+            if (name == "Buffers") {
                 Buffers = size;
-            if (name == "Cache")
+            }
+            if (name == "Cache") {
                 Cache = size;
-            if (name == "SwapTotal")
+            }
+            if (name == "SwapTotal") {
                 SwapTotal = size;
-            if (name == "SwapFree")
+            }
+            if (name == "SwapFree") {
                 SwapFree = size;
-            if (name == "SwapCached")
+            }
+            if (name == "SwapCached") {
                 SwapCached = size;
+            }
 
             if (unit.size() == 2 && std::tolower(unit[1]) == 'b') {
                 switch (std::tolower(unit[0])) {
@@ -147,16 +158,19 @@ std::map<std::int64_t, result_t> parse(const std::vector<std::string>& search)
                     break;
                 }
 
-                if (std::regex_match(line, match, regEx))
+                if (std::regex_match(line, match, regEx)) {
                     results.emplace(lineNr, result_t{std::move(name), size, lineNr});
+                }
             }
             else if (unit.size() == 1 && std::tolower(unit[0]) == 'b') {
-                if (std::regex_match(line, match, regEx))
+                if (std::regex_match(line, match, regEx)) {
                     results.emplace(lineNr, result_t{std::move(name), size, lineNr});
+                }
             }
             else {
-                if (std::regex_match(line, match, regEx))
+                if (std::regex_match(line, match, regEx)) {
                     results.emplace(lineNr, result_t{std::move(name), size, lineNr, false});
+                }
             }
         }
         ++lineNr;

@@ -87,8 +87,9 @@ public:
 
     void start()
     {
-        if (running)
+        if (running) {
             return;
+        }
 
         running = true;
         lastMeasurement_ = std::chrono::system_clock::now();
@@ -97,8 +98,9 @@ public:
 
     void stop()
     {
-        if (!running)
+        if (!running) {
             return;
+        }
 
         running = false;
 
