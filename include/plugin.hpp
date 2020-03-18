@@ -16,6 +16,12 @@
 
 #include <cstdint>
 
+struct meminfo_t {
+    std::int64_t line_nr;
+    std::string name;
+    std::string unit;
+};
+
 class meminfo_plugin : public scorep::plugin::base<meminfo_plugin,
                                                    scorep::plugin::policy::async,
                                                    scorep::plugin::policy::post_mortem,
@@ -62,21 +68,21 @@ public:
         bool retry = true;
         std::vector<scorep::plugin::metric_property> result;
 
+        std::int64_t id = 0;
+
         while (retry) {
             retry = false;
 
             result.clear();
 
-            for (auto match : init({pattern})) {
-                const auto& name = match.second.first;
-                const auto& unit = match.second.second;
-                const auto& id = match.first;
-
-                if (subscribed_.find(name) == subscribed_.end()) {
-                    result.push_back(scorep::plugin::metric_property{name, "", unit}
+            for (const auto& match : init({pattern})) {
+                if (subscribed_.find(match.name) == subscribed_.end()) {
+                    result.push_back(scorep::plugin::metric_property{
+                        match.name, "", match.unit}
                                          .absolute_point()
                                          .value_int());
-                    subscribed_.emplace(name, id);
+                    subscribed_.emplace(match.name, id);
+                    id_by_line_.emplace(match.line_nr, id);
                     values_by_id_.emplace(id, std::vector<int64_t>());
                 }
             }
@@ -186,6 +192,7 @@ private:
     std::map<std::string, std::int64_t> subscribed_;
     std::atomic<bool> running = false;
     std::thread thread_;
+    std::map<std::int64_t, std::int64_t> id_by_line_;
     std::map<std::int64_t, std::vector<std::int64_t>> values_by_id_;
     std::vector<scorep::chrono::ticks> times_;
     std::chrono::nanoseconds intervall_;
@@ -205,11 +212,11 @@ private:
     std::regex regex_parse =
         std::regex(".*:[^a-zA-Z0-9]*([0-9]+).?([kKmMgGtT][bB])?.*");
 
-    std::map<std::int64_t, std::pair<std::string, std::string>> init(const std::vector<std::string>& search)
+    std::vector<meminfo_t> init(const std::vector<std::string>& search)
     {
         std::string line;
         std::ifstream meminfo("/proc/meminfo");
-        std::map<std::int64_t, std::pair<std::string, std::string>> results;
+        std::vector<meminfo_t> results;
 
         std::string regex_custom_str;
         std::string regex_str = "(";
@@ -257,7 +264,7 @@ private:
             }
 
             if (save) {
-                results.emplace(line_nr, std::pair{match[1].str(), match[3].str()});
+                results.push_back(meminfo_t{line_nr, match[1].str(), match[3].str()});
             }
 
             ++line_nr;
@@ -272,7 +279,7 @@ private:
         {
             s = "MemUsed";
             if (std::regex_match(s, match_custom, regex_custom)) {
-                results.emplace(line_nr, std::pair{s, "B"});
+                results.push_back(meminfo_t{line_nr, s, "B"});
             }
             ++line_nr;
         }
@@ -280,7 +287,7 @@ private:
         {
             s = "SwapUsed";
             if (std::regex_match(s, match_custom, regex_custom)) {
-                results.emplace(line_nr, std::pair{s, "B"});
+                results.push_back(meminfo_t{line_nr, s, "B"});
             }
             ++line_nr;
         }
@@ -309,8 +316,8 @@ private:
             bool run = false;
             bool save = false;
 
-            auto handle_it = data.find(line_nr);
-            if (handle_it != data.end()) {
+            auto it = data.find(id_by_line_.find(line_nr)->second);
+            if (it != data.end()) {
                 std::regex_match(line, match, regex_parse);
 
                 std::int64_t value = std::stoll(match[1].str());
@@ -353,23 +360,23 @@ private:
                     swap_cached = value;
                 }
 
-                handle_it->second.push_back(value);
+                it->second.push_back(value);
             }
             ++line_nr;
         }
 
         // MemUsed
 
-        if (auto handle_it = data.find(mem_used_pos); handle_it != data.end()) {
-            handle_it->second.push_back(mem_total - mem_free - buffers - cache);
+        if (auto it = data.find(mem_used_pos); it != data.end()) {
+            it->second.push_back(mem_total - mem_free - buffers - cache);
         }
 
         ++line_nr;
 
         // SwapUsed
 
-        if (auto handle_it = data.find(swap_used_pos); handle_it != data.end()) {
-            handle_it->second.push_back(swap_total - swap_free - swap_cached);
+        if (auto it = data.find(swap_used_pos); it != data.end()) {
+            it->second.push_back(swap_total - swap_free - swap_cached);
         }
     }
 };
