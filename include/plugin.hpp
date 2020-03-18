@@ -308,8 +308,7 @@ private:
             bool run = false;
             bool save = false;
 
-            auto it = data.find(id_by_line_.find(line_nr)->second);
-            if (it != data.end()) {
+            if (auto it = data.find(id_by_line_.find(line_nr)->second); it != data.end()) {
                 std::regex_match(line, match, regex_parse);
 
                 std::int64_t value = std::stoll(match[1].str());
