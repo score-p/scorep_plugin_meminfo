@@ -104,8 +104,8 @@ public:
             buffers_pos = id_obj.line_nr;
         }
 
-        if (id_obj.name == "Cache") {
-            cache_pos = id_obj.line_nr;
+        if (id_obj.name == "Cached") {
+            cached_pos = id_obj.line_nr;
         }
 
         if (id_obj.name == "SwapTotal") {
@@ -187,7 +187,7 @@ private:
     int mem_total_pos = -1;
     int mem_free_pos = -1;
     int buffers_pos = -1;
-    int cache_pos = -1;
+    int cached_pos = -1;
     int swap_total_pos = -1;
     int swap_free_pos = -1;
     int swap_cached_pos = -1;
@@ -230,7 +230,7 @@ private:
         int mem_total;
         int mem_free;
         int buffers;
-        int cache;
+        int cached;
         int swap_total;
         int swap_free;
         int swap_cached;
@@ -285,13 +285,13 @@ private:
         std::string line;
         std::ifstream meminfo("/proc/meminfo");
 
-        int mem_total = -1;
-        int mem_free = -1;
-        int buffers = -1;
-        int cache = -1;
-        int swap_total = -1;
-        int swap_free = -1;
-        int swap_cached = -1;
+        int mem_total;
+        int mem_free;
+        int buffers;
+        int cached;
+        int swap_total;
+        int swap_free;
+        int swap_cached;
 
         std::int64_t line_nr = 0;
 
@@ -331,8 +331,8 @@ private:
                 if (buffers_pos == line_nr) {
                     buffers = value;
                 }
-                if (cache_pos == line_nr) {
-                    cache = value;
+                if (cached_pos == line_nr) {
+                    cached = value;
                 }
                 if (swap_total_pos == line_nr) {
                     swap_total = value;
@@ -352,12 +352,11 @@ private:
         // MemUsed
 
         if (auto it = data.find(mem_used_pos); it != data.end()) {
-            if (mem_total >= 0 && mem_free >= 0 && buffers >= 0 && cache >= 0) {
-                it->second.push_back(mem_total - mem_free - buffers - cache);
-            }
-            else {
+            if (mem_total_pos != -1 && mem_free_pos != -1 &&
+                buffers_pos != -1 && cached_pos != -1)
+                it->second.push_back(mem_total - mem_free - buffers - cached);
+            else
                 it->second.push_back(0);
-            }
         }
 
         ++line_nr;
@@ -365,12 +364,10 @@ private:
         // SwapUsed
 
         if (auto it = data.find(swap_used_pos); it != data.end()) {
-            if (swap_cached >= 0 && swap_free >= 0 && swap_total >= 0) {
+            if (swap_total_pos != -1 && swap_free_pos != -1 && swap_cached_pos != -1)
                 it->second.push_back(swap_total - swap_free - swap_cached);
-            }
-            else {
+            else
                 it->second.push_back(0);
-            }
         }
     }
 };
