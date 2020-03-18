@@ -17,16 +17,25 @@
 #include <cstdint>
 
 struct meminfo_t {
+    meminfo_t(const std::int64_t& line_nr, const std::string& name, const std::string& unit)
+        : line_nr(line_nr), name(name), unit(unit)
+    {
+    }
+
     std::int64_t line_nr;
     std::string name;
     std::string unit;
 };
 
+template <typename T, typename Policies>
+using meminfo_object_id = scorep::plugin::policy::object_id<meminfo_t, T, Policies>;
+
 class meminfo_plugin : public scorep::plugin::base<meminfo_plugin,
                                                    scorep::plugin::policy::async,
                                                    scorep::plugin::policy::post_mortem,
                                                    scorep::plugin::policy::scorep_clock,
-                                                   scorep::plugin::policy::once> {
+                                                   scorep::plugin::policy::once,
+                                                   meminfo_object_id> {
 public:
     meminfo_plugin()
     {
@@ -68,70 +77,56 @@ public:
         std::vector<scorep::plugin::metric_property> result;
 
         for (const auto& match : init({pattern})) {
-            if (subscribed_.find(match.name) == subscribed_.end()) {
+            if (values_by_id_.find(match.line_nr) == values_by_id_.end()) {
+                auto handle = make_handle(match.name, match);
                 result.push_back(
                     scorep::plugin::metric_property{match.name, "", match.unit}
                         .absolute_point()
                         .value_int());
-                subscribed_.emplace(match.name, last_id);
-                id_by_line_.emplace(match.line_nr, last_id);
-                values_by_id_.emplace(last_id, std::vector<int64_t>());
-
-                ++last_id;
+                values_by_id_.emplace(match.line_nr, std::vector<int64_t>());
             }
         }
-
-        if (subscribed_.find("MemTotal") == subscribed_.end()) {
-            throw new std::exception();
-        }
-        mem_total_pos = subscribed_.find("MemTotal")->second;
-
-        if (subscribed_.find("MemFree") == subscribed_.end()) {
-            throw new std::exception();
-        }
-        mem_free_pos = subscribed_.find("MemFree")->second;
-
-        if (subscribed_.find("Buffers") == subscribed_.end()) {
-            throw new std::exception();
-        }
-        buffers_pos = subscribed_.find("Buffers")->second;
-
-        if (subscribed_.find("Cache") == subscribed_.end()) {
-            throw new std::exception();
-        }
-        cache_pos = subscribed_.find("Cache")->second;
-
-        if (subscribed_.find("SwapTotal") == subscribed_.end()) {
-            throw new std::exception();
-        }
-        swap_total_pos = subscribed_.find("SwapTotal")->second;
-
-        if (subscribed_.find("SwapFree") == subscribed_.end()) {
-            throw new std::exception();
-        }
-        swap_free_pos = subscribed_.find("SwapFree")->second;
-
-        if (subscribed_.find("SwapCached") == subscribed_.end()) {
-            throw new std::exception();
-        }
-        swap_cached_pos = subscribed_.find("SwapCached")->second;
-
-        if (subscribed_.find("MemUsed") == subscribed_.end()) {
-            throw new std::exception();
-        }
-        mem_used_pos = subscribed_.find("MemUsed")->second;
-
-        if (subscribed_.find("SwapUsed") == subscribed_.end()) {
-            throw new std::exception();
-        }
-        swap_used_pos = subscribed_.find("SwapUsed")->second;
 
         return result;
     }
 
-    std::int64_t add_metric(const std::string& match_name)
+    void add_metric(const meminfo_t& id_obj)
     {
-        return subscribed_.find(match_name)->second;
+        if (id_obj.name == "MemTotal") {
+            mem_total_pos = id_obj.line_nr;
+        }
+
+        if (id_obj.name == "MemFree") {
+            mem_free_pos = id_obj.line_nr;
+        }
+
+        if (id_obj.name == "Buffers") {
+            buffers_pos = id_obj.line_nr;
+        }
+
+        if (id_obj.name == "Cache") {
+            cache_pos = id_obj.line_nr;
+        }
+
+        if (id_obj.name == "SwapTotal") {
+            swap_total_pos = id_obj.line_nr;
+        }
+
+        if (id_obj.name == "SwapFree") {
+            swap_free_pos = id_obj.line_nr;
+        }
+
+        if (id_obj.name == "SwapCached") {
+            swap_cached_pos = id_obj.line_nr;
+        }
+
+        if (id_obj.name == "MemUsed") {
+            mem_used_pos = id_obj.line_nr;
+        }
+
+        if (id_obj.name == "SwapUsed") {
+            swap_used_pos = id_obj.line_nr;
+        }
     }
 
     void start()
@@ -171,9 +166,9 @@ public:
     }
 
     template <typename Cursor>
-    void get_all_values(const int& id, Cursor& c)
+    void get_all_values(const meminfo_t& id_obj, Cursor& c)
     {
-        const auto& values = values_by_id_.find(id)->second;
+        const auto& values = values_by_id_.find(id_obj.line_nr)->second;
 
         for (int i = 0; i < values.size(); ++i) {
             c.write(times_[i], values[i]);
@@ -181,27 +176,23 @@ public:
     }
 
 private:
-    std::map<std::string, std::int64_t> subscribed_;
     std::atomic<bool> running = false;
     std::thread thread_;
-    std::map<std::int64_t, std::int64_t> id_by_line_;
     std::map<std::int64_t, std::vector<std::int64_t>> values_by_id_;
     std::vector<scorep::chrono::ticks> times_;
     std::chrono::nanoseconds intervall_;
     std::chrono::system_clock::time_point last_measurement_ =
         std::chrono::system_clock::now();
 
-    std::int64_t last_id = 0;
-
-    int mem_total_pos;
-    int mem_free_pos;
-    int buffers_pos;
-    int cache_pos;
-    int swap_total_pos;
-    int swap_free_pos;
-    int swap_cached_pos;
-    int mem_used_pos;
-    int swap_used_pos;
+    int mem_total_pos = -1;
+    int mem_free_pos = -1;
+    int buffers_pos = -1;
+    int cache_pos = -1;
+    int swap_total_pos = -1;
+    int swap_free_pos = -1;
+    int swap_cached_pos = -1;
+    int mem_used_pos = -1;
+    int swap_used_pos = -1;
 
     std::regex regex_parse =
         std::regex(".*:[^a-zA-Z0-9]*([0-9]+).?([kKmMgGtT][bB])?.*");
@@ -294,13 +285,13 @@ private:
         std::string line;
         std::ifstream meminfo("/proc/meminfo");
 
-        int mem_total;
-        int mem_free;
-        int buffers;
-        int cache;
-        int swap_total;
-        int swap_free;
-        int swap_cached;
+        int mem_total = -1;
+        int mem_free = -1;
+        int buffers = -1;
+        int cache = -1;
+        int swap_total = -1;
+        int swap_free = -1;
+        int swap_cached = -1;
 
         std::int64_t line_nr = 0;
 
@@ -310,7 +301,7 @@ private:
             bool run = false;
             bool save = false;
 
-            if (auto it = data.find(id_by_line_.find(line_nr)->second); it != data.end()) {
+            if (auto it = data.find(line_nr); it != data.end()) {
                 std::regex_match(line, match, regex_parse);
 
                 std::int64_t value = std::stoll(match[1].str());
@@ -361,7 +352,12 @@ private:
         // MemUsed
 
         if (auto it = data.find(mem_used_pos); it != data.end()) {
-            it->second.push_back(mem_total - mem_free - buffers - cache);
+            if (mem_total >= 0 && mem_free >= 0 && buffers >= 0 && cache >= 0) {
+                it->second.push_back(mem_total - mem_free - buffers - cache);
+            }
+            else {
+                it->second.push_back(0);
+            }
         }
 
         ++line_nr;
@@ -369,7 +365,12 @@ private:
         // SwapUsed
 
         if (auto it = data.find(swap_used_pos); it != data.end()) {
-            it->second.push_back(swap_total - swap_free - swap_cached);
+            if (swap_cached >= 0 && swap_free >= 0 && swap_total >= 0) {
+                it->second.push_back(swap_total - swap_free - swap_cached);
+            }
+            else {
+                it->second.push_back(0);
+            }
         }
     }
 };
