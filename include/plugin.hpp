@@ -266,16 +266,16 @@ private:
             if (std::regex_match(s, match_custom, regex_custom)) {
                 results.push_back(meminfo_t{line_nr, s, "B"});
             }
-            ++line_nr;
         }
+        ++line_nr;
 
         {
             s = "SwapUsed";
             if (std::regex_match(s, match_custom, regex_custom)) {
                 results.push_back(meminfo_t{line_nr, s, "B"});
             }
-            ++line_nr;
         }
+        ++line_nr;
 
         return results;
     }
@@ -352,11 +352,7 @@ private:
         // MemUsed
 
         if (auto it = data.find(mem_used_pos); it != data.end()) {
-            if (mem_total_pos != -1 && mem_free_pos != -1 &&
-                buffers_pos != -1 && cached_pos != -1)
-                it->second.push_back(mem_total - mem_free - buffers - cached);
-            else
-                it->second.push_back(0);
+            it->second.push_back(mem_total - mem_free - buffers - cached);
         }
 
         ++line_nr;
@@ -364,10 +360,7 @@ private:
         // SwapUsed
 
         if (auto it = data.find(swap_used_pos); it != data.end()) {
-            if (swap_total_pos != -1 && swap_free_pos != -1 && swap_cached_pos != -1)
-                it->second.push_back(swap_total - swap_free - swap_cached);
-            else
-                it->second.push_back(0);
+            it->second.push_back(swap_total - swap_free - swap_cached);
         }
     }
 };
