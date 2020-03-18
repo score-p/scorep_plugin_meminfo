@@ -65,74 +65,66 @@ public:
 
     std::vector<scorep::plugin::metric_property> get_metric_properties(const std::string& pattern /* = "mem.*"*/)
     {
-        bool retry = true;
         std::vector<scorep::plugin::metric_property> result;
 
         std::int64_t id = 0;
 
-        while (retry) {
-            retry = false;
-
-            result.clear();
-
-            for (const auto& match : init({pattern})) {
-                if (subscribed_.find(match.name) == subscribed_.end()) {
-                    result.push_back(scorep::plugin::metric_property{
-                        match.name, "", match.unit}
-                                         .absolute_point()
-                                         .value_int());
-                    subscribed_.emplace(match.name, id);
-                    id_by_line_.emplace(match.line_nr, id);
-                    values_by_id_.emplace(id, std::vector<int64_t>());
-                }
+        for (const auto& match : init({pattern})) {
+            if (subscribed_.find(match.name) == subscribed_.end()) {
+                result.push_back(
+                    scorep::plugin::metric_property{match.name, "", match.unit}
+                        .absolute_point()
+                        .value_int());
+                subscribed_.emplace(match.name, id);
+                id_by_line_.emplace(match.line_nr, id);
+                values_by_id_.emplace(id, std::vector<int64_t>());
             }
-
-            if (subscribed_.find("MemTotal") == subscribed_.end()) {
-                retry = true;
-                continue;
-            }
-            mem_total_pos = subscribed_.find("MemTotal")->second;
-            if (subscribed_.find("MemFree") == subscribed_.end()) {
-                retry = true;
-                continue;
-            }
-            mem_free_pos = subscribed_.find("MemFree")->second;
-            if (subscribed_.find("Buffers") == subscribed_.end()) {
-                retry = true;
-                continue;
-            }
-            buffers_pos = subscribed_.find("Buffers")->second;
-            if (subscribed_.find("Cache") == subscribed_.end()) {
-                retry = true;
-                continue;
-            }
-            cache_pos = subscribed_.find("Cache")->second;
-            if (subscribed_.find("SwapTotal") == subscribed_.end()) {
-                retry = true;
-                continue;
-            }
-            swap_total_pos = subscribed_.find("SwapTotal")->second;
-            if (subscribed_.find("SwapFree") == subscribed_.end()) {
-                retry = true;
-                continue;
-            }
-            swap_free_pos = subscribed_.find("SwapFree")->second;
-            if (subscribed_.find("SwapCached") == subscribed_.end()) {
-                retry = true;
-                continue;
-            }
-            swap_cached_pos = subscribed_.find("SwapCached")->second;
-            if (subscribed_.find("MemUsed") == subscribed_.end()) {
-                retry = true;
-                continue;
-            }
-            mem_used_pos = subscribed_.find("MemUsed")->second;
-            if (subscribed_.find("SwapUsed") == subscribed_.end()) {
-                retry = true;
-                continue;
-            }
-            swap_used_pos = subscribed_.find("SwapUsed")->second;
         }
+
+        if (subscribed_.find("MemTotal") == subscribed_.end()) {
+            throw new std::exception();
+        }
+        mem_total_pos = subscribed_.find("MemTotal")->second;
+
+        if (subscribed_.find("MemFree") == subscribed_.end()) {
+            throw new std::exception();
+        }
+        mem_free_pos = subscribed_.find("MemFree")->second;
+
+        if (subscribed_.find("Buffers") == subscribed_.end()) {
+            throw new std::exception();
+        }
+        buffers_pos = subscribed_.find("Buffers")->second;
+
+        if (subscribed_.find("Cache") == subscribed_.end()) {
+            throw new std::exception();
+        }
+        cache_pos = subscribed_.find("Cache")->second;
+
+        if (subscribed_.find("SwapTotal") == subscribed_.end()) {
+            throw new std::exception();
+        }
+        swap_total_pos = subscribed_.find("SwapTotal")->second;
+
+        if (subscribed_.find("SwapFree") == subscribed_.end()) {
+            throw new std::exception();
+        }
+        swap_free_pos = subscribed_.find("SwapFree")->second;
+
+        if (subscribed_.find("SwapCached") == subscribed_.end()) {
+            throw new std::exception();
+        }
+        swap_cached_pos = subscribed_.find("SwapCached")->second;
+
+        if (subscribed_.find("MemUsed") == subscribed_.end()) {
+            throw new std::exception();
+        }
+        mem_used_pos = subscribed_.find("MemUsed")->second;
+
+        if (subscribed_.find("SwapUsed") == subscribed_.end()) {
+            throw new std::exception();
+        }
+        swap_used_pos = subscribed_.find("SwapUsed")->second;
 
         return result;
     }
