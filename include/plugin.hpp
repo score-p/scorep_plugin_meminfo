@@ -59,28 +59,74 @@ public:
 
     std::vector<scorep::plugin::metric_property> get_metric_properties(const std::string& pattern /* = "mem.*"*/)
     {
+        bool retry = true;
         std::vector<scorep::plugin::metric_property> result;
 
-        for (auto match : init({pattern})) {
-            if (subscribed_.find(match.second.first) == subscribed_.end()) {
-                result.push_back(scorep::plugin::metric_property{
-                    match.second.first, "", match.second.second}
-                                     .absolute_point()
-                                     .value_int());
-                subscribed_.emplace(match.second.first, match.first);
-                data_.emplace(match.first, std::vector<int64_t>(1));
-            }
-        }
+        while (retry) {
+            retry = false;
 
-        mem_total_pos = subscribed_.find("MemTotal")->second;
-        mem_free_pos = subscribed_.find("MemFree")->second;
-        buffers_pos = subscribed_.find("Buffers")->second;
-        cache_pos = subscribed_.find("Cache")->second;
-        swap_total_pos = subscribed_.find("SwapTotal")->second;
-        swap_free_pos = subscribed_.find("SwapFree")->second;
-        swap_cached_pos = subscribed_.find("SwapCached")->second;
-        mem_used_pos = subscribed_.find("MemUsed")->second;
-        swap_used_pos = subscribed_.find("SwapUsed")->second;
+            result.clear();
+
+            for (auto match : init({pattern})) {
+                const auto& name = match.second.first;
+                const auto& unit = match.second.second;
+                const auto& id = match.first;
+
+                if (subscribed_.find(name) == subscribed_.end()) {
+                    result.push_back(scorep::plugin::metric_property{name, "", unit}
+                                         .absolute_point()
+                                         .value_int());
+                    subscribed_.emplace(name, id);
+                    values_by_id_.emplace(id, std::vector<int64_t>());
+                }
+            }
+
+            if (subscribed_.find("MemTotal") == subscribed_.end()) {
+                retry = true;
+                continue;
+            }
+            mem_total_pos = subscribed_.find("MemTotal")->second;
+            if (subscribed_.find("MemFree") == subscribed_.end()) {
+                retry = true;
+                continue;
+            }
+            mem_free_pos = subscribed_.find("MemFree")->second;
+            if (subscribed_.find("Buffers") == subscribed_.end()) {
+                retry = true;
+                continue;
+            }
+            buffers_pos = subscribed_.find("Buffers")->second;
+            if (subscribed_.find("Cache") == subscribed_.end()) {
+                retry = true;
+                continue;
+            }
+            cache_pos = subscribed_.find("Cache")->second;
+            if (subscribed_.find("SwapTotal") == subscribed_.end()) {
+                retry = true;
+                continue;
+            }
+            swap_total_pos = subscribed_.find("SwapTotal")->second;
+            if (subscribed_.find("SwapFree") == subscribed_.end()) {
+                retry = true;
+                continue;
+            }
+            swap_free_pos = subscribed_.find("SwapFree")->second;
+            if (subscribed_.find("SwapCached") == subscribed_.end()) {
+                retry = true;
+                continue;
+            }
+            swap_cached_pos = subscribed_.find("SwapCached")->second;
+            if (subscribed_.find("MemUsed") == subscribed_.end()) {
+                retry = true;
+                continue;
+            }
+            mem_used_pos = subscribed_.find("MemUsed")->second;
+            if (subscribed_.find("SwapUsed") == subscribed_.end()) {
+                retry = true;
+                continue;
+            }
+            swap_used_pos = subscribed_.find("SwapUsed")->second;
+        }
 
         return result;
     }
@@ -115,7 +161,7 @@ public:
     void exec()
     {
         while (running) {
-            parse(data_);
+            parse(values_by_id_);
             times_.push_back(scorep::chrono::measurement_clock::now());
 
             while (last_measurement_ < std::chrono::system_clock::now()) {
@@ -129,10 +175,10 @@ public:
     template <typename Cursor>
     void get_all_values(const int& id, Cursor& c)
     {
-        auto handle = data_.find(id)->second;
+        const auto& values = values_by_id_.find(id)->second;
 
-        for (int i = 0; i < handle.size(); ++i) {
-            c.write(times_[i], handle[i]);
+        for (int i = 0; i < values.size(); ++i) {
+            c.write(times_[i], values[i]);
         }
     }
 
@@ -140,7 +186,7 @@ private:
     std::map<std::string, std::int64_t> subscribed_;
     std::atomic<bool> running = false;
     std::thread thread_;
-    std::map<std::int64_t, std::vector<std::int64_t>> data_;
+    std::map<std::int64_t, std::vector<std::int64_t>> values_by_id_;
     std::vector<scorep::chrono::ticks> times_;
     std::chrono::nanoseconds intervall_;
     std::chrono::system_clock::time_point last_measurement_ =
@@ -206,7 +252,7 @@ private:
             if (std::regex_match(line, match, regex)) {
                 save = true;
             }
-            else if (std::regex_match(line, match, std::regex("(MemTotal|MemFree|SwapTotal|SwapFree|SwapCached|Cache|Buffers):[^a-zA-Z0-9]*([0-9]+).?([kKmMgGtT][bB])?[^a-zA-Z0-9]*"))) {
+            else if (std::regex_match(line, match, std::regex("(MemTotal|MemFree|SwapTotal|SwapFree|SwapCached|Cache|Buffers):[^a-zA-Z0-9]*([0-9]+).?[kKmMgGtT]?([bB])?[^a-zA-Z0-9]*"))) {
                 save = true;
             }
 
@@ -313,16 +359,16 @@ private:
         }
 
         // MemUsed
-        auto handle = data.find(mem_used_pos);
-        if (handle != data.end()) {
+
+        if (auto handle = data.find(mem_used_pos); handle != data.end()) {
             handle->second.push_back(mem_total - mem_free - buffers - cache);
         }
 
         ++line_nr;
 
         // SwapUsed
-        handle = data.find(swap_used_pos);
-        if (handle != data.end()) {
+
+        if (auto handle = data.find(swap_used_pos); handle != data.end()) {
             handle->second.push_back(swap_total - swap_free - swap_cached);
         }
     }
