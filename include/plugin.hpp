@@ -78,6 +78,8 @@ public:
                 subscribed_.emplace(match.name, id);
                 id_by_line_.emplace(match.line_nr, id);
                 values_by_id_.emplace(id, std::vector<int64_t>());
+
+                ++id;
             }
         }
 
