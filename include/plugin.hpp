@@ -309,8 +309,8 @@ private:
             bool run = false;
             bool save = false;
 
-            auto handle = data.find(line_nr);
-            if (handle != data.end()) {
+            auto handle_it = data.find(line_nr);
+            if (handle_it != data.end()) {
                 std::regex_match(line, match, regex_parse);
 
                 std::int64_t value = std::stoll(match[1].str());
@@ -353,23 +353,23 @@ private:
                     swap_cached = value;
                 }
 
-                handle->second.push_back(value);
+                handle_it->second.push_back(value);
             }
             ++line_nr;
         }
 
         // MemUsed
 
-        if (auto handle = data.find(mem_used_pos); handle != data.end()) {
-            handle->second.push_back(mem_total - mem_free - buffers - cache);
+        if (auto handle_it = data.find(mem_used_pos); handle_it != data.end()) {
+            handle_it->second.push_back(mem_total - mem_free - buffers - cache);
         }
 
         ++line_nr;
 
         // SwapUsed
 
-        if (auto handle = data.find(swap_used_pos); handle != data.end()) {
-            handle->second.push_back(swap_total - swap_free - swap_cached);
+        if (auto handle_it = data.find(swap_used_pos); handle_it != data.end()) {
+            handle_it->second.push_back(swap_total - swap_free - swap_cached);
         }
     }
 };
