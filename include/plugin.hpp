@@ -244,7 +244,7 @@ private:
             if (std::regex_match(line, match, regex)) {
                 save = true;
             }
-            else if (std::regex_match(line, match, std::regex("(MemTotal|MemFree|SwapTotal|SwapFree|SwapCached|Cache|Buffers):[^a-zA-Z0-9]*([0-9]+).?[kKmMgGtT]?([bB])?[^a-zA-Z0-9]*"))) {
+            else if (std::regex_match(line, match, std::regex("(MemTotal|MemFree|SwapTotal|SwapFree|SwapCached|Cached|Buffers):[^a-zA-Z0-9]*([0-9]+).?[kKmMgGtT]?([bB])?[^a-zA-Z0-9]*"))) {
                 save = true;
             }
 
@@ -266,16 +266,16 @@ private:
             if (std::regex_match(s, match_custom, regex_custom)) {
                 results.push_back(meminfo_t{line_nr, s, "B"});
             }
+            ++line_nr;
         }
-        ++line_nr;
 
         {
             s = "SwapUsed";
             if (std::regex_match(s, match_custom, regex_custom)) {
                 results.push_back(meminfo_t{line_nr, s, "B"});
             }
+            ++line_nr;
         }
-        ++line_nr;
 
         return results;
     }
