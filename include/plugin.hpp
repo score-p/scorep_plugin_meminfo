@@ -67,19 +67,17 @@ public:
     {
         std::vector<scorep::plugin::metric_property> result;
 
-        std::int64_t id = 0;
-
         for (const auto& match : init({pattern})) {
             if (subscribed_.find(match.name) == subscribed_.end()) {
                 result.push_back(
                     scorep::plugin::metric_property{match.name, "", match.unit}
                         .absolute_point()
                         .value_int());
-                subscribed_.emplace(match.name, id);
-                id_by_line_.emplace(match.line_nr, id);
-                values_by_id_.emplace(id, std::vector<int64_t>());
+                subscribed_.emplace(match.name, last_id);
+                id_by_line_.emplace(match.line_nr, last_id);
+                values_by_id_.emplace(last_id, std::vector<int64_t>());
 
-                ++id;
+                ++last_id;
             }
         }
 
@@ -192,6 +190,8 @@ private:
     std::chrono::nanoseconds intervall_;
     std::chrono::system_clock::time_point last_measurement_ =
         std::chrono::system_clock::now();
+
+    std::int64_t last_id = 0;
 
     int mem_total_pos;
     int mem_free_pos;
