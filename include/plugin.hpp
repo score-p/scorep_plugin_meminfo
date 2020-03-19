@@ -184,15 +184,15 @@ private:
     std::chrono::system_clock::time_point last_measurement_ =
         std::chrono::system_clock::now();
 
-    int mem_total_pos = -1;
-    int mem_free_pos = -1;
-    int buffers_pos = -1;
-    int cached_pos = -1;
-    int swap_total_pos = -1;
-    int swap_free_pos = -1;
-    int swap_cached_pos = -1;
-    int mem_used_pos = -1;
-    int swap_used_pos = -1;
+    std::int64_t mem_total_pos = -1;
+    std::int64_t mem_free_pos = -1;
+    std::int64_t buffers_pos = -1;
+    std::int64_t cached_pos = -1;
+    std::int64_t swap_total_pos = -1;
+    std::int64_t swap_free_pos = -1;
+    std::int64_t swap_cached_pos = -1;
+    std::int64_t mem_used_pos = -1;
+    std::int64_t swap_used_pos = -1;
 
     std::regex regex_parse =
         std::regex(".*:[^a-zA-Z0-9]*([0-9]+).?([kKmMgGtT][bB])?.*");
@@ -226,14 +226,6 @@ private:
         regex_str += ":[^a-zA-Z0-9]*([0-9]+).?([kKmMgGtT][bB])?[^a-zA-Z0-9]*";
 
         std::regex regex(regex_str);
-
-        int mem_total;
-        int mem_free;
-        int buffers;
-        int cached;
-        int swap_total;
-        int swap_free;
-        int swap_cached;
 
         std::int64_t line_nr = 0;
         while (std::getline(meminfo, line)) {
@@ -285,13 +277,13 @@ private:
         std::string line;
         std::ifstream meminfo("/proc/meminfo");
 
-        int mem_total;
-        int mem_free;
-        int buffers;
-        int cached;
-        int swap_total;
-        int swap_free;
-        int swap_cached;
+        std::int64_t mem_total;
+        std::int64_t mem_free;
+        std::int64_t buffers;
+        std::int64_t cached;
+        std::int64_t swap_total;
+        std::int64_t swap_free;
+        std::int64_t swap_cached;
 
         std::int64_t line_nr = 0;
 
